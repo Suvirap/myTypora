@@ -274,3 +274,23 @@ public:
 **lower_bound**( begin,end,num)：从数组的begin位置到end-1位置二分查找**第一个大于或等于num**的数字，找到返回该数字的地址，不存在则返回end。通过返回的地址减去起始地址begin,得到找到数字在数组中的下标
 
 https://blog.csdn.net/weixin_53225765/article/details/122798643
+
+## 2129. 将标题首字母大写
+
+大小写转换的函数：`toupper()`将小写字母转换为大写字母，`tolower()`将大写字母转换为小写字母。头文件是<stdio.h>。`str[i] = toupper(str[i]);`
+
+另外对于字符串末尾空格不好处理的情况，可以手动在末尾添加一个空格，然后处理完成后，再删掉，这样就避免了将末尾无空格的情况进行单独讨论。
+
+```c++
+string title;
+title.push_back(' ');
+// xxxxxxxxxx
+title.pop_back();
+```
+
+## 14. 最长公共前缀
+
+对于`vector<string> strs`，进行sort排序，是按字典序进行排的。
+如`vector<string> strs = {"dog", "cacesss", "car"};` sort后的结果是`{"cacesss","car","dog"}`.
+
+> 问题：如何按照长度进行排序呢，同长度再按字典序排。

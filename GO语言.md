@@ -718,6 +718,15 @@ func new(Type) *Type
 func make(t Type, size ...IntegerType) Type
 ```
 
+## 反射
+
+在讲反射之前，先来看看 Golang 关于类型设计的一些原则
+
+- 在 Golang 中变量包括（type, value）两部分
+- type 包括 static type 和 concrete type. 简单来说 static type 是你在编码是看见的类型(如 int、string)，concrete type 是 runtime 系统看见的类型。类型断言能否成功，取决于变量的 concrete type，而不是 static type.
+
+接下来要说的反射，就是能够在运行时更新变量和检查变量的值、调用变量的方法和变量支持的内在操作，而不需要在编译时就知道这些变量的具体类型。这种机制被称为反射。Golang 的基础类型是静态的（也就是指定 int、string 这些的变量，它的 type 是 static type），在创建变量的时候就已经确定，反射主要与 Golang 的 interface 类型相关（它的 type 是 concrete type），只有运行时 interface 类型才有反射一说。
+
 # 函数与方法
 
 ## 函数
