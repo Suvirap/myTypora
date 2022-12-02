@@ -25,8 +25,8 @@
 优化过程经历了以下几个过程：
 
 	1. 优化数据库的数据结构和索引(难度大)
- 	2. 文件缓存，通过IO流获取比每次都访问数据库效率略高，但是流量爆炸式增长时候，IO流也承受不了
- 	3. MemCache,当时最热门的技术，通过在数据库和数据库访问层之间加上一层缓存，第一次访问时查询数据库，将结果保存到缓存，后续的查询先检查缓存，若有直接拿去使用，效率显著提升。
+	2. 文件缓存，通过IO流获取比每次都访问数据库效率略高，但是流量爆炸式增长时候，IO流也承受不了
+	3. MemCache,当时最热门的技术，通过在数据库和数据库访问层之间加上一层缓存，第一次访问时查询数据库，将结果保存到缓存，后续的查询先检查缓存，若有直接拿去使用，效率显著提升。
 
 > 3、分库分表 + 水平拆分 + Mysql集群
 
@@ -237,7 +237,7 @@ OK
 
 ---
 
-单线程指的是从**网络IO处理到实际的读写命令处理**都是由单个线程完成的，并不是说整个redis只有一个主线程。你可能听到在redis6.0版本支持多线程，不过这个并不是指多个线程同时处理读写命令，而是使用多线程来处理socket的读写，最终执行读写命令的过程还是**只在主线程。**
+单线程指的是从**网络IO处理到实际的读写命令处理**都是由单个线程完成的，并不是说整个redis只有一个主线程。你可能听到在redis6.0版本支持多线程，不过**这个并不是指多个线程同时处理读写命令，而是使用多线程来处理socket的读写**，最终执行读写命令的过程还是**只在主线程。**
 
 ## 应用场景
 
@@ -292,7 +292,7 @@ Redis的key，通过TTL命令返回key的过期时间，一般来说有3种：
 - `RENAME key newkey`修改 key 的名称
 - `RENAMENX key newkey`仅当 newkey 不存在时，将 key 改名为 newkey 。
 
-## String（字符串）
+## 1. String（字符串）
 
 ### 结构
 
@@ -340,7 +340,7 @@ struct sdshdr{
 
 ​		C字符串中的字符必须符合某种编码（比如ASCII），并且除了字符串的末尾之外，字符串里面不能包含空字符，否则最先被程序读入的空字符将被误认为是字符串结尾，这些限制使得C字符串只能保存文本数据，而不能保存像图片、音频、视频、压缩文件这样的二进制数据。举个例子，如果有一种使用空字符来分割多个单词的特殊数据格式，如图2-17所示，那么这种格式就不能使用C字符串来保存，因为C字符串所用的函数只会识别出其中的"Redis"，而忽略之后的"Cluster"。
 
-![image-20210613212908451](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210613212908451.png)
+![image-20221201115009262](Redis.assets/image-20221201115009262.png)
 
 ​		使用空字符来分割单词的特殊数据格式虽然数据库一般用于保存文本数据，但使用数据库来保存二进制数据的场景也不少见，因此，为了确保Redis可以适用于各种不同的使用场景，SDS的API都是二进制安全的（binary-safe），**所有SDS API都会以处理二进制的方式来处理SDS存放在buf数组里的数据，程序不会对其中的数据做任何限制、过滤、或者假设，数据在写入时是什么样的，它被读取时就是什么样。**这也是我们将SDS的buf属性称为字节数组的原因——Redis不是用这个数组来保存字符，而是用它来保存一系列二进制数据。
 
@@ -380,14 +380,14 @@ struct sdshdr{
 
 ### 场景
 
-String类似的使用场景：value除了是字符串还可以是数字，用途举例：
+String类似的使用场景：<u>value除了是字符串还可以是数字</u>，用途举例：
 
 - 计数器
 - 统计多单位的数量：uid:123666：follow 0
 - 粉丝数
 - 对象存储缓存
 
-## List（列表）
+## 2. List（列表）
 
 >  Redis列表是简单的字符串列表，按照插入顺序排序。你可以添加一个元素到列表的头部（左边）或者尾部（右边）
 
@@ -467,7 +467,7 @@ typedef struct list{
 
 **消息排队！消息队列（Lpush Rpop）,栈（Lpush Lpop）**
 
-## Set（集合）
+## 3. Set（集合）
 
 Redis的Set是string类型的无序集合。集合成员是唯一的，这就意味着集合中不能出现重复的数据。Redis 中 集合是通过哈希表实现的，所以添加，删除，查找的复杂度都是O(1)。集合中最大的成员数为 232 - 1 (4294967295, 每个集合可存储40多亿个成员)。
 
@@ -489,9 +489,9 @@ Redis的Set是string类型的无序集合。集合成员是唯一的，这就意
 |  `SUNIONSTORE destination key1 [key2..]`  |           在SUNION的基础上，存储结果到及和张。覆盖           |
 | `SSCAN KEY [MATCH pattern] [COUNT count]` |   在大量数据环境下，使用此命令遍历集合中元素，每次遍历部分   |
 
-## Hash（哈希）
+## 4. Hash（哈希）
 
-> Redis hash 是一个string类型的field和value的映射表，hash特别适合用于存储对象。
+> Redis hash 是一个string类型的field和value的映射表，**hash特别适合用于存储对象。**
 >
 > Set就是一种简化的Hash,只变动key,而value使用默认值填充。可以将一个Hash表作为一个对象进行存储，表中存放对象的信息。
 
@@ -514,9 +514,9 @@ Redis的Set是string类型的无序集合。集合成员是唯一的，这就意
 |            `HINCRBYFLOAT key field n`            |       为哈希表 key 中的指定字段的浮点数值加上增量 n。        |
 | `HSCAN key cursor [MATCH pattern] [COUNT count]` |                    迭代哈希表中的键值对。                    |
 
-Hash变更的数据user name age，尤其是用户信息之类的，经常变动的信息！**Hash更适合于对象的存储，Sring更加适合字符串存储！**
+Hash变更的数据user name age，尤其是用户信息之类的，经常变动的信息！**Hash更适合于对象的存储，String更加适合字符串存储！**
 
-## Zset（有序集合）
+## 5. Zset（有序集合）
 
 不同的是每个元素都会关联一个double类型的分数（score）。redis正是通过分数来为集合中的成员进行从小到大的排序。score相同：按字典顺序排序
 有序集合的成员是唯一的，但分数(score)却可以重复。
@@ -590,7 +590,7 @@ COUNT n : 只显示前n个(按距离递增排序)
 
 ## Hyperloglog
 
-Redis HyperLogLog 是用来做基数统计的算法，HyperLogLog 的优点是，在输入元素的数量或者体积非常非常大时，计算基数所需的空间总是固定的、并且是很小的。花费 12 KB 内存，就可以计算接近 2^64 个不同元素的基数。因为 HyperLogLog 只会根据输入元素来计算基数，而不会储存输入元素本身，所以 HyperLogLog 不能像集合那样，返回输入的各个元素。其底层使用string数据类型
+Redis HyperLogLog 是用来做**基数统计**的算法，HyperLogLog 的优点是，在输入元素的数量或者体积非常非常大时，计算基数所需的空间总是固定的、并且是很小的。花费 12 KB 内存，就可以计算接近 2^64 个不同元素的基数。因为 HyperLogLog 只会根据输入元素来计算基数，而不会储存输入元素本身，所以 HyperLogLog 不能像集合那样，返回输入的各个元素。其底层使用string数据类型
 
 > 什么是基数
 
@@ -669,7 +669,7 @@ redisDb结构的expires字典保存了数据库中所有键的过期时间，我
 图9-12展示了一个带有过期字典的数据库例子，在这个例子中，键空间保存了数据库中的所有键值对，而过期字典则保存了数据库键的过期时间。
 为了展示方便，图9-12的键空间和过期字典中重复出现了两次alphabet键对象和book键对象。在实际中，键空间的键和过期字典的键都指向同一个键对象，所以不会出现任何重复对象，也不会浪费任何空间。
 
-![image-20210612165552042](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210612165552042.png)
+![image-20221201154452066](Redis.assets/image-20221201154452066.png)
 
 ### 移除过期时间
 
@@ -714,7 +714,7 @@ redisDb结构的expires字典保存了数据库中所有键的过期时间，我
 
 定期删除策略是前两种策略的一种整合和折中：
 
-+ 定期删除策略每隔一段时间执行一次删除过期键操作，并通过限制删除操作执行的时长和频率来减少删除操作对CPU时间的影响。
++ 定期删除策略每隔一段时间执行一次删除过期键操作，并通过<u>限制删除操作执行的时长和频率来减少删除操作对CPU时间的影响</u>。
 + 除此之外，通过定期删除过期键，定期删除策略有效地减少了因为过期键而带来的内存浪费。
 
 #### Redis的过期删除策略
@@ -768,7 +768,7 @@ QUEUED
 + 如果客户端发送的命令为EXEC、DISCARD、WATCH、MULTI四个命令的其中一个，那么服务器立即执行这个命令。、
 + 与此相反，如果客户端发送的命令是EXEC、DISCARD、WATCH、MULTI四个命令以外的其他命令，那么服务器并不立即执行这个命令，而是将这个命令放入一个事务队列里面，然后向客户端返回QUEUED回复。
 
-![image-20210612194357215](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210612194357215.png)
+![image-20221201155214290](Redis.assets/image-20221201155214290.png)
 
 ### 取消事务
 
@@ -912,12 +912,12 @@ QUEUED
 
 所有对数据库进行修改的命令，比如SET、LPUSH、SADD、ZREM、DEL、FLUSHDB等等，在执行之后都会调用multi.c/touchWatchKey函数对watched_keys字典进行检查，查看是否有客户端正在监视刚刚被命令修改过的数据库键，如果有的话，那么touchWatchKey函数会将监视被修改键的客户端的`REDIS_DIRTY_CAS`标识打开，表示该客户端的事务安全性已经被破坏。
 
-当服务器接收到一个客户端发来的EXEC命令时，服务器会根据这个客户端是否打开了REDIS_DIRTY_CAS标识来决定是否执行事务：
+当服务器接收到一个客户端发来的EXEC命令时，服务器会根据这个客户端是否打开了`REDIS_DIRTY_CAS`标识来决定是否执行事务：
 
-+ 如果客户端的REDIS_DIRTY_CAS标识已经被打开，那么说明客户端所监视的键当中，至少有一个键已经被修改过了，在这种情况下，客户端提交的事务已经不再安全，所以服务器会拒绝执行客户端提交的事务。
-+ 如果客户端的REDIS_DIRTY_CAS标识没有被打开，那么说明客户端监视的所有键都没有被修改过（或者客户端没有监视任何键），事务仍然是安全的，服务器将执行客户端提交的这个事务。
++ 如果客户端的`REDIS_DIRTY_CAS`标识已经被打开，那么说明客户端所监视的键当中，至少有一个键已经被修改过了，在这种情况下，客户端提交的事务已经不再安全，所以服务器会拒绝执行客户端提交的事务。
++ 如果客户端的`REDIS_DIRTY_CAS`标识没有被打开，那么说明客户端监视的所有键都没有被修改过（或者客户端没有监视任何键），事务仍然是安全的，服务器将执行客户端提交的这个事务。
 
-![image-20210612195656939](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210612195656939.png)
+![image-20221201155732036](Redis.assets/image-20221201155732036.png)
 
 # 七、持久化——RDB
 
@@ -925,21 +925,20 @@ Redis是内存数据库，如果不将内存中的数据保存到磁盘，那么
 
 RDB：Redis Database。 **持久化方式默认是RDB**
 
-![image-20210610212201324](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210610212201324.png)
-
+![image-20221201155847794](Redis.assets/image-20221201155847794.png)
 
 在指定时间间隔后，将内存中的数据集快照写入数据库，也就是Snapshots ；在恢复时候，直接读取快照文件，进行数据的恢复 。
 默认情况下， Redis 将数据库快照保存在名字为 `dump.rdb`的二进制文件中。文件名可以在配置文件中进行自定义。
 
 ## RDB文件的创建
 
-有两个Redis命令可以用于生成RDB文件，一个是SAVE，另一个是BGSAVE。
+有两个Redis命令可以用于生成RDB文件，一个是`SAVE`，另一个是`BGSAVE`。
 
-SAVE命令会阻塞Redis服务器进程，直到RDB文件创建完毕为止，在服务器进程阻塞期间，服务器不能处理任何命令请求。
+`SAVE`命令会阻塞Redis服务器进程，直到RDB文件创建完毕为止，在服务器进程阻塞期间，服务器不能处理任何命令请求。
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200513215150892.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80Mzg3MzIyNw==,size_16,color_FFFFFF,t_70)
 
-和SAVE命令直接阻塞服务器进程的做法不同，BGSAVE命令会派生出一个**子进程**，然后由子进程负责创建RDB文件，服务器进程（父进程）继续处理命令请求。在BGSAVE命令执行期间，客户端发送的SAVE命令会被服务器拒绝，服务器禁止SAVE命令和BGSAVE命令同时执行是为了避免父进程（服务器进程）和子进程同时执行两个rdbSave调用，防止产生竞争条件。
+和`SAVE`命令直接阻塞服务器进程的做法不同，`BGSAVE`命令会派生出一个**子进程**，然后由子进程负责创建RDB文件，服务器进程（父进程）继续处理命令请求。在`BGSAVE`命令执行期间，客户端发送的SAVE命令会被服务器拒绝，服务器禁止SAVE命令和BGSAVE命令同时执行是为了避免父进程（服务器进程）和子进程同时执行两个rdbSave调用，防止产生竞争条件。
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200513215141519.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80Mzg3MzIyNw==,size_16,color_FFFFFF,t_70)
 
@@ -961,7 +960,7 @@ BGSAVE和SAVE对比：
 
 ### 何时用save？
 
-![image-20210823232630274](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210823232630274.png)
+![image-20221201160319730](Redis.assets/image-20221201160319730.png)
 
 ## 触发持久化条件
 
@@ -987,7 +986,7 @@ BGSAVE和SAVE对比：
 
 AOF（Append Only File），与RDB持久化通过保存数据库中的键值对来记录数据库状态不同，AOF持久化是通过保存Redis服务器所执行的写命令来记录数据库状态的。
 
-<img src="C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210612191154867.png" alt="image-20210612191154867" style="zoom:67%;" />
+![image-20221201160500438](Redis.assets/image-20221201160500438.png)
 
 以日志的形式来记录每个写的操作，将Redis执行过的所有指令记录下来（读操作不记录），只许追加文件但不可以改写文件，redis启动之初会读取该文件重新构建数据，换言之，redis重启的话就根据日志文件的内容将写指令从前到后执行一次以完成数据的恢复工作。
 
@@ -1022,7 +1021,7 @@ flushAppendOnlyFile函数的行为由服务器配置的appendfsync选项的值�
 
 ## 载入
 
-![image-20210612192225779](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210612192225779.png)
+![image-20221201161148153](Redis.assets/image-20221201161148153.png)
 
 当这些命令都执行完毕之后，服务器的数据库就被还原到之前的状态了。
 
@@ -1030,7 +1029,7 @@ flushAppendOnlyFile函数的行为由服务器配置的appendfsync选项的值�
 
 **为了解决AOF文件体积膨胀的问题**，Redis提供了AOF文件重写（rewrite）功能。通过该功能，Redis服务器可以创建一个新的AOF文件来替代现有的AOF文件，新旧两个AOF文件所保存的数据库状态相同，但新AOF文件不会包含任何浪费空间的冗余命令，所以新AOF文件的体积通常会比旧AOF文件的体积要小得多。
 
-虽然Redis将生成新AOF文件替换旧AOF文件的功能命名为“AOF文件重写”，但实际上，AOF文件重写并不需要对现有的AOF文件进行任何读取、分析或者写入操作，<u>这个功能是通过读取服务器当前的数据库状态来实现的。</u>
+虽然Redis将生成新AOF文件替换旧AOF文件的功能命名为“AOF文件重写”，但实际上，AOF文件重写并不需要对现有的AOF文件进行任何读取、分析或者写入操作，==<u>这个功能是通过读取服务器当前的数据库状态来实现的。</u>==
 
 首先从数据库中读取键现在的值，然后用一条命令去记录键值对，代替之前记录这个键值对的多条命令，这就是AOF重写功能的实现原理。
 
@@ -1047,7 +1046,7 @@ flushAppendOnlyFile函数的行为由服务器配置的appendfsync选项的值�
 
 为了解决这种数据不一致问题，Redis服务器设置了一个AOF重写缓冲区，这个缓冲区在服务器创建子进程之后开始使用，当Redis服务器执行完一个写命令之后，它会同时将这个写命令发送给AOF缓冲区和AOF重写缓冲区，如图11-4所示。
 
-![image-20210612193942580](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210612193942580.png)
+![image-20221201161615934](Redis.assets/image-20221201161615934.png)
 
 当子进程完成AOF重写工作之后，它会向父进程发送一个信号，父进程在接到该信号之后，会调用一个信号处理函数，并执行以下工作：
 1）将AOF重写缓冲区中的所有内容写入到新AOF文件中，这时新AOF文件所保存的数据库状态将和服务器当前的数据库状态一致。
@@ -1062,7 +1061,7 @@ flushAppendOnlyFile函数的行为由服务器配置的appendfsync选项的值�
 
 ## 优缺点
 
-![image-20210612200140199](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210612200140199.png)
+![image-20221201164648574](Redis.assets/image-20221201164648574.png)
 
 **优点**
 
@@ -1081,7 +1080,7 @@ flushAppendOnlyFile函数的行为由服务器配置的appendfsync选项的值�
 
 Redis 发布订阅(pub/sub)是一种消息通信模式：发送者(pub)发送消息，订阅者(sub)接收消息。
 
-<img src="C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210612201124457.png" alt="image-20210612201124457" style="zoom:67%;" />
+<img src="Redis.assets/image-20221201165316891.png" alt="image-20221201165316891" style="zoom:67%;" />
 
 当有新消息通过 PUBLISH 命令发送给频道 channel1 时， 这个消息就会被发送给订阅它的三个客户端：
 
@@ -1150,7 +1149,7 @@ Reading messages... (press Ctrl-C to quit) # 等待接收消息
 
 ## 过程
 
-![image-20210613193903378](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210613193903378.png)
+![image-20221201172159879](Redis.assets/image-20221201172159879.png)
 
  1：当一个从数据库启动时，会向主数据库发送sync命令，
  2：主数据库接收到sync命令后会开始在后台保存快照（执行rdb操作），并将保存期间接收到的命令缓存起来
@@ -1235,7 +1234,7 @@ PSYNC命令的部分重同步模式解决了旧版复制功能在处理断线后
 
    【如果从节点开启了AOF，则会在数据恢复完成后，触发bgrewriteaof的执行，保证从节点AOF文件更新至主节点的最新状态；这会带来很大的CPU、磁盘IO消耗】
 
-## 部分复制
+### 部分复制
 
 部分复制的实现，依赖于三个重要的概念：
 
@@ -1247,7 +1246,7 @@ PSYNC命令的部分重同步模式解决了旧版复制功能在处理断线后
 		复制积压缓冲区是由主节点维护的、固定长度的、先进先出(FIFO)队列，默认大小1MB。
 		**创建：**当主节点成功拥有第一个从节点时，创建复制积压缓冲区；
 		作用：备份主节点最近发送给从节点的数据。【无论主节点有一个还是多个从节点，都只需要一个复制积压缓冲区。】
-		复制积压缓冲区作为写命令的备份，还存储了每个命令的复制偏移量（offset），时间较早的写命令会被挤出缓冲区，故当主从节点offset的差距过大超过缓冲区长度时，将无法执行部分复制，只能执行全量复制。
+		复制积压缓冲区作为写命令的备份，还存储了每个命令的复制偏移量（offset），时间较早的写命令会被挤出缓冲区，<u>故当主从节点offset的差距过大超过缓冲区长度时，将无法执行部分复制，只能执行全量复制。</u>
 
 **服务器运行ID：**
 		每个Redis节点(无论主从)，在启动时都会自动生成一个随机ID(每次启动都不一样)；
@@ -1306,7 +1305,7 @@ PING发送的频率由repl-ping-slave-period参数控制，单位是秒，默认
 
 哨兵也是一个 Redis 进程，只是不对外提供读写服务，通常哨兵要配置成**单数**。
 
-<img src="C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210813224906177.png" alt="image-20210813224906177" style="zoom: 67%;" />
+![image-20221201202422394](Redis.assets/image-20221201202422394.png)
 
 ## 监控
 
@@ -1320,13 +1319,13 @@ PING发送的频率由repl-ping-slave-period参数控制，单位是秒，默认
 
 判断 master 是否下线不能只有一个「哨兵」说了算，只有过半的哨兵判断 master 已经「主观下线」，这时候才能将 master 标记为「客观下线」。只有 master 被判定为「客观下线」，才会进一步触发哨兵开始主从切换流程。
 
-<img src="C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210813224603687.png" alt="image-20210813224603687" style="zoom:50%;" />
+<img src="Redis.assets/image-20221201202459418.png" alt="image-20221201202459418" style="zoom:67%;" />
 
 ## 自主切换主库
 
 筛选 + 打分。
 
-<img src="C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210813224721120.png" alt="image-20210813224721120" style="zoom:50%;" />
+<img src="Redis.assets/image-20221201202519860.png" alt="image-20221201202519860" style="zoom:67%;" />
 
 打分规则：
 
@@ -1369,8 +1368,8 @@ Redis 哨兵机制实现了主从库的自动切换，再也不怕跟女盆友�
 - 基于 INFO 命令获取 slave 列表，帮助 哨兵与 slave 建立连接；
 - 通过哨兵的 pub/sub，实现了与客户端和哨兵之间的事件通知。
 
-主从切换，并不是随意选择一个哨兵就可以执行，而是通过投票仲裁，选择一个 Leader，由这个 Leader 负责主从切换。
+主从切换，并不是随意选择一个哨兵就可以执行，而是通过投票仲裁，选择一个 Leader，由这个 Leader 负责主从切换。、
 
 # 十二、缓存异常
 
-![image-20210814001717678](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210814001717678.png)
+![image-20221201203140894](Redis.assets/image-20221201203140894.png)
