@@ -680,7 +680,7 @@ Redis多副本，采用主从（replication）部署结构，相较于单副本�
 
 Redis Sentinel是社区版本推出的原生高可用解决方案，其部署架构主要包括两部分：Redis Sentinel集群和Redis数据集群。
 
-其中Redis Sentinel集群是由若干Sentinel节点组成的分布式集群，可以实现故障发现、故障自动转移、配置中心和[客户端](https://www.nowcoder.com/jump/super-jump/word?word=客户端)通知。Redis Sentinel的节点数量要满足2n+1（n>=1）的奇数个。
+其中Redis Sentinel集群是由若干Sentinel节点组成的分布式集群，可以实现故障发现、故障自动转移、配置中心和[客户端](https://www.nowcoder.com/jump/super-jump/word?word=客户端)通知。**Redis Sentinel的节点数量要满足2n+1（n>=1）的奇数个。**
 
 ![image-20210829103343110](https://uploadfiles.nowcoder.com/files/20210829/540390845_1630218787350/image-20210829103343110.png)
 
@@ -704,7 +704,7 @@ Redis Sentinel是社区版本推出的原生高可用解决方案，其部署架
 
 Redis Cluster是社区版推出的Redis分布式集群解决方案，主要解决Redis分布式方面的需求，比如，当遇到单机内存，并发和流量等瓶颈的时候，Redis Cluster能起到很好的负载均衡的目的。
 
-Redis Cluster集群节点最小配置6个节点以上（3主3从），其中主节点提供读写操作，从节点作为备用节点，不提供请求，只作为故障转移使用。
+**Redis Cluster集群节点最小配置6个节点以上（3主3从），其中主节点提供读写操作，从节点作为备用节点，不提供请求，只作为故障转移使用。**
 
 Redis Cluster采用虚拟槽分区，所有的键根据哈希函数映射到0～16383个整数槽内，每个节点负责维护一部分槽以及槽所印映射的键值数据。
 
@@ -886,7 +886,7 @@ hash slot让node的增加和移除很简单，增加一个master，就将其他m
 
 ## 53. Redis cluster节点间通信是什么机制？
 
-Redis cluster节点间采取gossip协议进行通信，所有节点都持有一份元数据，不同的节点如果出现了元数据的变更之后U不断地i将元数据发送给其他节点让其他节点进行数据变更。
+Redis cluster节点间**采取gossip协议进行通信**，所有节点都持有一份元数据，不同的节点如果出现了元数据的变更之后U不断地i将元数据发送给其他节点让其他节点进行数据变更。
 
 > 节点互相之间不断通信，保持整个集群所有节点的数据是完整的。 主要交换故障信息、节点的增加和移除、hash slot信息等。
 
