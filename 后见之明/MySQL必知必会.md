@@ -50,6 +50,22 @@ IN WHERE子句中用来指定要匹配值的清单的关键字，功能与OR相�
 NOT操作符：WHERE子句中的NOT操作符有且只有一个功能，那就是否定它之后所跟的任何条件。
 					SELECT prod_price, prod_name FROM products WHERE vend_id NOT IN (1002, 1003) ORDER BY prod_name;
 
+## LIMIT
+
+1、当 limit后面跟一个参数的时候，该参数表示要取的数据的数量
+
+例如 `select* from user limit 3` 表示直接取前三条数据
+
+2、当limit后面跟两个参数的时候，第一个数表示要跳过的数量，后一位表示要取的数量,例如
+
+`select * from user limit 1,3;`
+
+就是跳过1条数据,从第2条数据开始取，取3条数据，也就是取2,3,4三条数据
+
+3、当 limit和offset组合使用的时候，limit后面只能有一个参数，表示要取的的数量,offset表示要跳过的数量 。
+
+例如`select * from user limit 3 offset 1;`表示跳过1条数据,从第2条数据开始取，取3条数据，也就是取2,3,4三条数据
+
 ##  用通配符进行过滤
 
 LIKE指示MySQL，后跟的搜索模式利用通配符匹配而不是直接相等匹配进行比较。
@@ -136,6 +152,24 @@ HAVING和WHERE的差别 这里有另一种理解方法，WHERE在数据分组前
 
 联结多个表：
 ![image-20210315093612676](C:\Users\sure\AppData\Roaming\Typora\typora-user-images\image-20210315093612676.png)
+
+---
+
+inner join：2表值都存在
+
+outer join：附表中值可能存在null的情况。
+
+总结：
+
+①A inner join B：取交集
+
+②A left join B：取A全部，B没有对应的值，则为null
+
+③A right join B：取B全部，A没有对应的值，则为null
+
+④A full outer join B：取并集，彼此没有对应的值为null
+
+上述4种的对应条件，在on后填写。
 
 ## 高级联结
 

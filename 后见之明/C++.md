@@ -440,7 +440,7 @@ C++中四种类型转换是：static_cast, dynamic_cast, const_cast, reinterpret
 
 + reinterpret_cast：可以用于任意类型的指针之间的转换，对转换的结果不做任何保证。**它可以用于类型之间进行强制转换。**
 
-+ const_cast：对于未定义const版本的成员函数，我们**通常需要使用const_cast来去除const引用对象的const，完成函数调用**。另外一种使用方式，结合static_cast，可以在非const版本的成员函数内添加const，调用完const版本的成员函数后，再使用const_cast去除const限定。|  该运算符用来修改类型的const或volatile属性。除了const或volatile修饰之外， type_id和expression的类型是一样的。
++ const_cast：对于未定义const版本的成员函数，我们**通常需要使用const_cast来去除const引用对象的const，完成函数调用**。另外一种使用方式，结合static_cast，可以在非const版本的成员函数内添加const，调用完const版本的成员函数后，再使用const_cast去除const限定。|  该运算符用来修改类型的const或volatile属性。除了const或volatile修饰之外， type_id和expression的类型是一样的。| 而const_cast则正是用于强制去掉这种不能被修改的常数特性，但需要特别注意的是const_cast不是用于去除变量的常量性，而是去除指向常数对象的指针或引用的常量性，**其去除常量性的对象必须为指针或引用。**
 
 + static_cast：完成基础数据类型；同一个继承体系中类型的转换；任意类型与空指针类型void* 之间的转换。|  static_cast < type-id > (expression)，该运算符把expression转换为type-id类型，但没有运行时类型检查来保证转换的安全性。它主要有如下几种用法：
 
@@ -457,6 +457,8 @@ C++中四种类型转换是：static_cast, dynamic_cast, const_cast, reinterpret
 
   > 在类层次间进行上行转换时，dynamic_cast和static_cast的效果是一样的
   > 在进行下行转换时，dynamic_cast具有类型检查的功能，比static_cast更安全
+
+**其他三种都是编译时完成的，dynamic_cast是运行时处理的，运行时要进行类型检查。**
 
 ## 隐式转换
 
@@ -1228,9 +1230,9 @@ move 可以直接调用：`std::move(i)` ，但 foward 要明确给出模板参�
 
 2) 参数传递过程到底发生了什么？
  将地址传递和值传递统一起来，归根结底还是传递的是"值"(地址也是值，只不过通过它可以找到另一个值)！
- i)值传递:
-  对于内置数据类型的传递时，直接赋值拷贝给形参(注意形参是函数内局部变量)；
-  对于类类型的传递时，需要首先调用该类的拷贝构造函数来初始化形参(局部对象)；
+   i)值传递:
+    对于内置数据类型的传递时，直接赋值拷贝给形参(注意形参是函数内局部变量)；
+    对于类类型的传递时，需要首先调用该类的拷贝构造函数来初始化形参(局部对象)；
 
 如void foo(class_type obj_local){}, 如果调用foo(obj); 首先class_type obj_local(obj) ,这样就定义了局部变量obj_local供函数内部使用
 
