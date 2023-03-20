@@ -365,6 +365,44 @@ override: 当在父类中使用了虚函数时候，你可能需要在某个子�
 
 final：当不希望某个类被继承，或不希望某个虚函数被重写，可以在类名和虚函数后添加final关键字，添加final关键字后被继承或重写，编译器会报错。
 
+## auto & decltype
+
+decltype 是 [C++](http://c.biancheng.net/cplus/)11 新增的一个关键字，它和 auto 的功能一样，都用来在编译时期进行自动类型推导。既然已经有了 auto 关键字，为什么还需要 decltype 关键字呢？因为 auto 并不适用于所有的自动类型推导场景，在某些特殊情况下 auto 用起来非常不方便，甚至压根无法使用，所以 decltype 关键字也被引入到 C++11 中。
+
+auto 和 decltype 关键字都可以自动推导出变量的类型，但它们的用法是有区别的：
+
+```c++
+auto varname = value;
+decltype(exp) varname = value;
+```
+
+其中，`varname` 表示变量名，`value` 表示赋给变量的值，`exp` 表示一个表达式。**auto 根据`=`右边的初始值 value 推导出变量的类型，而 decltype 根据 exp 表达式推导出变量的类型，跟`=`右边的 value 没有关系。**
+
+另外，auto 要求变量必须初始化，而 decltype 不要求。这很容易理解，auto 是根据变量的初始值来推导出变量类型的，如果不初始化，变量的类型也就无法推导了。decltype 可以写成下面的形式：
+
+```c++
+decltype(exp) varname;
+```
+
+C++ decltype 用法举例：
+
+```c++
+int a = 0;
+decltype(a) b = 1;  //b 被推导成了 int
+decltype(10.8) x = 5.5;  //x 被推导成了 double
+decltype(x + 100) y;  //y 被推导成了 double
+```
+
+可以看到，decltype 能够根据变量、字面量、带有运算符的表达式推导出变量的类型。读者请留意第 4 行，y 没有被初始化。
+
+>  exp注意事项
+
+原则上讲，exp 就是一个普通的表达式，它可以是任意复杂的形式，但是我们必须要保证 exp 的结果是有类型的，不能是 void；例如，当 exp 调用一个返回值类型为 void 的函数时，exp 的结果也是 void 类型，此时就会导致编译错误。
+
+- 如果 exp 是一个不被括号`( )`包围的表达式，或者是一个类成员访问表达式，或者是一个单独的变量，那么 decltype(exp) 的类型就和 exp 一致，这是最普遍最常见的情况。
+- 如果 exp 是函数调用，那么 decltype(exp) 的类型就和函数返回值的类型一致。
+- 如果 exp 是一个左值，或者被括号`( )`包围，那么 decltype(exp) 的类型就是 exp 的引用；假设 exp 的类型为 T，那么 decltype(exp) 的类型就是 T&。
+
 # 二、变量、指针、函数等
 
 ## 声明和定义
@@ -1206,6 +1244,123 @@ foo<int&>(); // void foo<int&>(int& t);
 move 可以直接调用：`std::move(i)` ，但 foward 要明确给出模板参数：`std::foward<int>(i)` 才能使用。forward 会模板参数类型的右值引用，也就是：`int&&` 。注意，如果我们这样使用：`std::forward<int&>(i)` 返回的就是 `int& &&` ，进而折叠为 `int&` 。
 
 一般来说，<u>模板函数中的参数类型为右值引用的时候，就需要搭配 forward 来使用</u>，**通过 forward 和引用折叠**，就可以完美的保留参数类型了。
+
+### 万能引用
+
+C++ 11中有万能引用（Universal Reference）的概念：使用`T&&`类型的形参既能绑定右值，又能绑定左值。
+
+但是注意了：**只有发生类型推导的时候，T&&才表示万能引用**；否则，表示右值引用。
+
+```c++
+template<typename T>
+void func(T& param) {
+    cout << "传入的是左值" << endl;
+}
+template<typename T>
+void func(T&& param) {
+    cout << "传入的是右值" << endl;
+}
+int main() {
+    int num = 2019;
+    func(num);
+    func(2019);
+    return 0;
+}
+```
+
+输出结果：
+
+```c++
+传入的是左值
+传入的是右值
+```
+
+第一次函数调用的是左值得版本，第二次函数调用的是右值版本。但是，有没有办法只写一个模板函数即可以接收左值又可以接收右值呢？上面的案例我们可以修改为：
+
+```c++
+template<typename T>
+void func(T&& param) {
+    cout << param << endl;
+}
+int main() {
+    int num = 2019;
+    func(num);
+    func(2019);
+    return 0;
+}
+```
+
+### 引用折叠
+
+万能引用说完了，接着来聊引用折叠（Univers Collapse），因为完美转发（Perfect Forwarding）的概念涉及引用折叠。一个模板函数，根据定义的形参和传入的实参的类型，我们可以有下面四中组合：
+
+- 左值-左值 T& & # 函数定义的形参类型是左值引用，传入的实参是左值引用
+- 左值-右值 T& && # 函数定义的形参类型是左值引用，传入的实参是右值引用
+- 右值-左值 T&& & # 函数定义的形参类型是右值引用，传入的实参是左值引用
+- 右值-右值 T&& && # 函数定义的形参类型是右值引用，传入的实参是右值引用
+
+但是C++中不允许对引用再进行引用，对于上述情况的处理有如下的规则：
+
+所有的折叠引用最终都代表一个引用，要么是左值引用，要么是右值引用。规则是：**如果任一引用为左值引用，则结果为左值引用。否则（即两个都是右值引用），结果为右值引用**。
+
+即就是**前面三种情况代表的都是左值引用，而第四种代表的右值引用。**
+
+### 完美转发
+
+**一套机制：万能引用+引用折叠+forward**
+
+`std::forwar`d被称为**完美转发**，它的作用是保持原来的`值`属性不变。啥意思呢？通俗的讲就是，如果原来的值是左值，经`std::forward`处理后该值还是左值；如果原来的值是右值，经`std::forward`处理后它还是右值。
+
+看看下面的例子，你应该就清楚上面这句话的含义了:
+
+```c++
+#include <iostream>
+
+template<typename T>
+void print(T & t){
+    std::cout << "左值" << std::endl;
+}
+
+template<typename T>
+void print(T && t){
+    std::cout << "右值" << std::endl;
+}
+
+template<typename T>
+void testForward(T && v){
+    print(v);
+    print(std::forward<T>(v));
+    print(std::move(v));
+}
+
+int main(int argc, char * argv[])
+{
+    testForward(1);
+
+    std::cout << "======================" << std::endl;
+
+    int x = 1;
+    testFoward(x);
+}
+
+//clang++ -std=c++11 -g -o forward test_forward.cpp
+```
+
+在上面的代码中，定义了两个模板函数，一个接收左值，另一个接收右值。在`testForward`函数中向模板函数`print`传入不同的参数，这样我们就可以观察出forward与move的区别了。上面代码执行结果如下：
+
+```c++
+左值
+右值
+右值
+=========================
+左值
+左值
+右值
+```
+
+从上面第一组的结果我们可以看到，传入的1虽然是右值，但经过函数传参之后它变成了左值（在内存中分配了空间）；而第二行由于使用了std::forward函数，所以不会改变它的右值属性，因此会调用参数为右值引用的print模板函数；第三行，因为std::move会将传入的参数强制转成右值，所以结果一定是右值。
+
+再来看看第二组结果。因为x变量是左值，所以第一行一定是左值；第二行使用forward处理，它依然会让其保持左值，所以第二也是左值；最后一行使用move函数，因此一定是右值。
 
 ## 拷贝构造函数与赋值运算符重载的区别
 
