@@ -536,7 +536,7 @@ fmt.Println(string([]rune(s)[:4])) // 输出：Go语言
 
 字符串在底层的表示是由单个字节组成的一个不可修改的字节序列，字节使用UTF-8编码标识Unicode文本。Unicode 文本意味着`.go`文件内可以包含世界上的任意语言或字符，该文件在任意系统上打开都不会乱码。UTF-8 是 Unicode 的一种实现方式，是一种针对 Unicode 可变长度的字符编码，它定义了字符串具体以何种方式存储在内存中。UFT-8 使用 1 ~ 4 为每个字符编码。
 
-Go 语言把字符分`byte`和`rune`两种类型处理。`byte`是类型`uint8`的别名，用于存放占 1 字节的 ASCII 字符，如英文字符，返回的是字符原始字节。`rune`是类型`int32`的别名，用于存放多字节字符，如占 3 字节的中文字符，返回的是字符 Unicode 码点值。如下图所示：
+Go 语言把字符分`byte`和`rune`两种类型处理。`byte`是类型`uint8`的别名，用于存放占 1 字节的 ASCII 字符，如英文字符，返回的是字符原始字节。`rune`是类型`int32`的别名，**用于存放多字节字符**，如占 3 字节的中文字符，返回的是字符 Unicode 码点值。如下图所示：
 
 ```go
 s := "Go语言编程"
@@ -694,6 +694,95 @@ init函数可以在任意包中定义，并且可以重复定义多个。main函
 
 一个变长参数函数只能有一个“...T”类型形式参数，并且该**形式参数应该为函数参数列表中的最后一个形式参数**。
 
+## 反射
+
+> 在计算机科学中，反射是指计算机程序在运行时（Run time）可以访问、检测和修改它本身状态或行为的一种能力。用比喻来说，反射就是程序在运行的时候能够“观察”并且修改自己的行为。
+
+实际上，它的本质是程序在运行期探知对象的类型信息和内存结构，不用反射能行吗？可以的！使用汇编语言，直接和内层打交道，什么信息不能获取？但是，当编程迁移到高级语言上来之后，就不行了！就只能通过`反射`来达到此项技能。
+
+> Go 语言提供了一种机制在运行时更新变量和检查它们的值、调用它们的方法，但是在编译时并不知道这些变量的具体类型，这称为反射机制。
+
+### 场景
+
+需要反射的 2 个常见场景：
+
+1. 有时你需要编写一个函数，但是并不知道传给你的参数类型是什么，可能是没约定好；也可能是传入的类型很多，这些类型并不能统一表示。这时反射就会用的上了。
+2. 有时候需要根据某些条件决定调用哪个函数，比如根据用户的输入来决定。这时就需要对函数和函数的参数进行反射，在运行期间动态地执行函数。
+
+在讲反射的原理以及如何用之前，还是说几点**不使用反射的理由**：
+
+1. 与反射相关的代码，经常是难以阅读的。在软件工程中，代码可读性也是一个非常重要的指标。
+2. Go 语言作为一门静态语言，编码过程中，编译器能提前发现一些类型错误，但是对于反射代码是无能为力的。所以包含反射相关的代码，很可能会运行很久，才会出错，这时候经常是直接 panic，可能会造成严重的后果。
+3. 反射**对性能影响还是比较大**的，比正常代码运行速度慢一到两个数量级。所以，对于一个项目中处于运行效率关键位置的代码，尽量避免使用反射特性。
+
+### 反射的基本函数
+
+reflect 包里定义了一个接口和一个结构体，即 `reflect.Type` 和 `reflect.Value`，它们提供很多函数来获取存储在接口里的类型信息。`reflect.Type` 主要提供关于类型相关的信息，所以它和 `_type` 关联比较紧密；`reflect.Value` 则结合 `_type` 和 `data` 两者，因此程序员可以获取甚至改变类型的值。
+
+reflect 包中提供了两个基础的关于反射的函数来获取上述的接口和结构体：
+
+```go
+func TypeOf(i interface{}) Type 
+func ValueOf(i interface{}) Value
+```
+
+`TypeOf` 函数用来提取一个接口中值的类型信息。由于它的输入参数是一个空的 `interface{}`，调用此函数时，实参会先被转化为 `interface{}` 类型。这样，实参的类型信息、方法集、值信息都存储到 `interface{}` 变量里了。
+
+---
+
+另外，通过 `Type()` 方法和 `Interface()` 方法可以打通 `interface`、`Type`、`Value` 三者。Type() 方法也可以返回变量的类型信息，与 reflect.TypeOf() 函数等价。Interface() 方法可以将 Value 还原成原来的 interface。
+
+<img src="https://pic2.zhimg.com/v2-fa7d4ae2f7daeb9b24cbad8996883a75_r.jpg" alt="img" style="zoom:33%;" />
+
+### 反射三大定律
+
+根据 Go 官方关于反射的博客，反射有三大定律：
+
+1.  Reflection goes from interface value to reflection object.
+2.  Reflection goes from reflection object to interface value.
+3.  To modify a reflection object, the value must be settable.
+
+第一条是最基本的：反射是一种检测存储在 `interface` 中的类型和值机制。这可以通过 `TypeOf` 函数和 `ValueOf` 函数得到。
+
+第二条实际上和第一条是相反的机制，它将 `ValueOf` 的返回值通过 `Interface()` 函数反向转变成 `interface` 变量。
+
+前两条就是说 `接口型变量` 和 `反射类型对象` 可以相互转化，反射类型对象实际上就是指的前面说的 `reflect.Type` 和 `reflect.Value`。
+
+第三条不太好懂：如果需要操作一个反射变量，那么它必须是可设置的。反射变量可设置的本质是它存储了原变量本身，这样对反射变量的操作，就会反映到原变量本身；反之，如果反射变量不能代表原变量，那么操作了反射变量，不会对原变量产生任何影响，这会给使用者带来疑惑。所以第二种情况在语言层面是不被允许的。举一个经典的例子：
+
+```go
+var x float64 = 3.4
+v := reflect.ValueOf(x)
+v.SetFloat(7.1) // Error: will panic.
+```
+
+执行上面的代码会产生 panic，原因是反射变量 `v` 不能代表 `x` 本身，为什么？因为调用 `reflect.ValueOf(x)` 这一行代码的时候，传入的参数在函数内部只是一个拷贝，是值传递，所以 `v` 代表的只是 `x` 的一个拷贝，因此对 `v` 进行操作是被禁止的。
+
+**可设置**是反射变量 `Value` 的一个性质，但不是所有的 `Value` 都是可被设置的。就像在一般的函数里那样，当我们想改变传入的变量时，使用指针就可以解决了。
+
+```go
+var x float64 = 3.4
+p := reflect.ValueOf(&x)
+fmt.Println("type of p:", p.Type())
+fmt.Println("settability of p:", p.CanSet())
+```
+
+```go
+type of p: *float64
+settability of p: false
+```
+
+`p` 还不是代表 `x`，`p.Elem()` 才真正代表 `x`，这样就可以真正操作 `x` 了：
+
+```go
+v := p.Elem()
+v.SetFloat(7.1)
+fmt.Println(v.Interface()) // 7.1
+fmt.Println(x) // 7.1
+```
+
+
+
 ## 封装
 
 Go中使用未导出的变量、struct字段、函数或方法，把数据封装在包中。 
@@ -781,7 +870,7 @@ return: 0
 
 返回值由变量i赋值，相当于返回值=i=0。第二个defer中i++ = 1， 第一个defer中i++ = 2，所以最终i的值是2。但是返回值已经被赋值了，即使后续修改i也不会影响返回值。最终返回值返回，所以main中打印0。
 
-(2)有名返回值
+（2）有名返回值
 
 ```go
 package main
@@ -1049,6 +1138,22 @@ buffered := make(chan string, 10)
 
    因此，为了不阻塞在channel上，常见的方法是将判空与读取放在一个事务中，将判满与写入放在一个事务中，而这类事务我们可以通过select实现。
 
+### 内部实现
+
+通过var声明或者make函数创建的channel变量是一个存储在函数栈帧上的指针，占用8个字节，指向堆上的hchan结构体。源码包中`src/runtime/chan.go`定义了hchan的数据结构：
+
+<img src="GO语言.assets/image-20230403151402973.png" alt="image-20230403151402973" style="zoom:50%;" />
+
+1. Channel本质上是由三个**FIFO**（First In FirstOut，先进先出）队列组成的用于协程之间传输数据的协程安全的通道；FIFO的设计是为了保障公平，让事情变得简单，原则是让等待时间最长的协程最有资格先从channel发送或接收数据；
+
+2. 三个FIFO队列依次是**buf循环队列，sendq待发送者队列，recvq待接收者队列**。buf循环队列是**大小固定的用来存放channel接收的数据的队列**；sendq待发送者队列，用来存放等待发送数据到channel的goroutine的双向链表，recvq待接收者队列，用来存放等待从channel读取数据的goroutine的双向链表；sendq和recvq可以认为不限大小；
+
+3. 跟函数调用传参本质都是传值一样，channel传递数据的本质就是值拷贝，引用类型数据的传递也是地址拷贝；有从缓冲区buf地址拷贝数据到接收者receiver栈内存地址，也有从发送者sender栈内存地址拷贝数据到缓冲区buf；
+
+4. Channel里面参数的修改不是并发安全的，包括对三个队列及其他参数的访问，因此需要加锁，本质上，channel就是一个有锁队列；
+
+创建channel实际上就是在内存中实例化了一个hchan的结构体，并返回一个ch指针，我们使用过程中channel在函数之间的传递都是用的这个指针，这就是为什么函数传递中无需使用channel的指针，而直接用channel就行了，因为channel本身就是一个指针。
+
 ### 3种模式
 
 写操作模式：`make(chan<- int)`
@@ -1119,7 +1224,7 @@ golang 的 select 就是**监听 IO 操作**，当 IO 操作发生时，触发�
 
 这个是最常见的使用场景，多个通道，有一个满足条件可以读取，就可以“竞选成功”
 
-(2)超时处理（保证不阻塞）
+（2）超时处理（保证不阻塞）
 
 ```go
 select {
@@ -1255,6 +1360,188 @@ goroutine没有固定的id。chatgpt给出的原因如下，不是特别靠谱�
 使用context进行非阻塞式停止。cancel函数和ctx.Done判定。
 
 干掉另一个goroutine？“我想在 goroutineA 里去停止 goroutineB，有办法吗？” 答案是**不能**，因为在 Go 语言中，goroutine 只能自己主动退出，一般通过 channel 来控制，不能被外界的其他 goroutine 关闭或干掉，也没有 goroutine 句柄的显式概念。
+
+## 逃逸分析
+
+内存逃逸分析是go的编译器在**编译期**间，根据变量的类型和作用域，**确定变量是堆上还是栈上**
+
+简单说就是编译器在编译期间，对代码进行分析，确定变量分配内存的位置。**如果变量需要分配在堆上，则称作内存逃逸了**。
+
+> 为什么需要逃逸分析
+
+因为go语言是自动自动内存管理的，也就是有GC的。开发者在写代码的时候不需要关心考虑内存释放的问题，这样编译器和go运行时（runtime）就需要准确分配和管理内存，所以编译器在编译期间要确定变量是放在堆空间和栈空间。
+
+### 原则
+
+go语言虽然没有明确说明逃逸分析原则，但是有以下几点准则，是可以参考的。
+
+- 不同于JAVA JVM的运行时逃逸分析，Go的逃逸分析是在编译期完成的：编译期无法确定的参数类型必定放到堆中；
+- 如果变量在<u>函数外部存在引用</u>，则必定放在堆中；
+- 如果变量<u>占用内存较大</u>时，则优先放到堆中；
+- 如果变量在函数外部没有引用，则优先放到栈中；
+
+### 几种场景
+
+go的编译器提供了逃逸分析的工具，只需要在编译的时候加上 `-gcflags=-m` 就可以看到逃逸分析的结果了
+
+#### return 局部变量的指针
+
+```go
+package main
+
+func main() {
+
+}
+
+func One() *int {
+   i := 10
+   return &i
+}
+```
+
+```go
+# command-line-arguments
+.\main.go:3:6: can inline main
+.\main.go:7:6: can inline One
+.\main.go:8:2: moved to heap: i
+```
+
+可以看到变量 `i` 已经被分配到堆上了
+
+#### interface{} 动态类型
+
+当函数传递的变量类型是 `interface{}` 类型的时候，因为编译器无法推断运行时变量的实际类型，所以也会发生逃逸
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+   i := 10
+   fmt.Println(i)
+}
+```
+
+```go
+.\main.go:11:13: inlining call to fmt.Println
+.\main.go:11:13: i escapes to heap
+.\main.go:11:13: []interface {} literal does not escape
+<autogenerated>:1: .this does not escape
+<autogenerated>:1: .this does not escape
+```
+
+可看到，`i` 也被分配到堆上了
+
+#### 栈空间不足
+
+因为栈的空间是有限的，所以在分配大块内存时，会考虑栈空间内否存下，如果栈空间存不下，会分配到堆上。
+
+```go
+package main
+
+func main() {
+   Make10()
+   Make100()
+   Make10000()
+   MakeN(5)
+}
+
+func Make10() {
+   arr10 := make([]int, 10)
+   _ = arr10
+}
+
+func Make100() {
+   arr100 := make([]int, 100)
+   _ = arr100
+}
+
+func Make10000() {
+   arr10000 := make([]int, 10000)
+   _ = arr10000
+}
+
+func MakeN(n int) {
+   arrN := make([]int, n)
+   _ = arrN
+}
+```
+
+```go
+# command-line-arguments
+.\main.go:10:6: can inline Make10
+.\main.go:15:6: can inline Make100
+.\main.go:20:6: can inline Make10000
+.\main.go:25:6: can inline MakeN
+.\main.go:3:6: can inline main
+.\main.go:4:8: inlining call to Make10
+.\main.go:5:9: inlining call to Make100
+.\main.go:6:11: inlining call to Make10000
+.\main.go:7:7: inlining call to MakeN
+.\main.go:4:8: make([]int, 10) does not escape
+.\main.go:5:9: make([]int, 100) does not escape
+.\main.go:6:11: make([]int, 10000) escapes to heap
+.\main.go:7:7: make([]int, n) escapes to heap
+.\main.go:11:15: make([]int, 10) does not escape
+.\main.go:16:16: make([]int, 100) does not escape
+.\main.go:21:18: make([]int, 10000) escapes to heap
+.\main.go:26:14: make([]int, n) escapes to heap
+```
+
+可以看到当需要分配长度为10，100的int类型的slice时，不需要逃逸到堆上，在栈上就可以，如果slice长度达到1000时，就需要分配到堆上了。
+
+还有一种情况，当在编译期间长度不确定时，也需要分配到堆上。
+
+#### 闭包
+
+```go
+package main
+
+func main() {
+   One()
+}
+
+func One() func() {
+   n := 10
+   return func() {
+      n++
+   }
+}
+```
+
+在函数`One`中return了一个匿名函数，形成了一个闭包，看一下逃逸分析
+
+```go
+# command-line-arguments
+.\main.go:3:6: can inline main
+.\main.go:9:9: can inline One.func1
+.\main.go:8:2: moved to heap: n
+.\main.go:9:9: func literal escapes to heap
+```
+
+可以看到 变量 `n` 也分配到堆上了。
+
+还有一种情况，`new` 出来的变量不一定分配到堆上
+
+```go
+package main
+
+func main() {
+   i := new(int)
+   _ = i
+}
+```
+
+像java C++等语言，new 出来的变量正常都会分配到堆上，但是在go里，new出来的变量不一定分配到堆上，至于分配到哪里，还是看编译器的逃逸分析来确定
+
+```go
+# command-line-arguments
+.\main.go:3:6: can inline main
+.\main.go:4:10: new(int) does not escape
+```
+
+可以看到 new出来的变量，并没有逃逸，还是在栈上。
 
 ## 调度模型
 
